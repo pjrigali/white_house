@@ -4,13 +4,25 @@ import os
 import json
 import re
 import csv
+import random
 from datetime import datetime
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-}
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+]
+
+def get_headers():
+    return {"User-Agent": random.choice(USER_AGENTS)}
+
+session = requests.Session()
+
 OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.data_lake', '01_bronze', 'white_house')
 TRACKING_FILE = os.path.join(OUTPUT_FOLDER, "article_tracking.csv")
+COLLECTED_ARTICLES_CACHE = set()
 
 def slugify(text):
     """Converts text into a file-friendly slug."""
@@ -46,18 +58,17 @@ def init_storage():
         with open(TRACKING_FILE, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(headers)
-
-def is_already_collected(title, date):
-    """Checks if an article with the given title and date has already been collected."""
-    if not os.path.exists(TRACKING_FILE):
-        return False
-    
+            
+    # Load tracking data into memory cache
+    COLLECTED_ARTICLES_CACHE.clear()
     with open(TRACKING_FILE, 'r', newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            if row['article_name'] == title and row['date_created'] == date:
-                return True
-    return False
+            COLLECTED_ARTICLES_CACHE.add((row['article_name'], row['date_created']))
+
+def is_already_collected(title, date):
+    """Checks if an article with the given title and date has already been collected."""
+    return (title, date) in COLLECTED_ARTICLES_CACHE
 
 def update_tracking_csv(title, date_created, category):
     """Adds a new entry to the tracking CSV."""
@@ -65,18 +76,20 @@ def update_tracking_csv(title, date_created, category):
     with open(TRACKING_FILE, 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow([date_created, date_collected, title, category])
+    # Also update cache
+    COLLECTED_ARTICLES_CACHE.add((title, date_created))
 
 def get_article_links(url):
     """Scrapes article titles, links, dates, and categories from a list page."""
     import time
     max_retries = 5
     for attempt in range(max_retries):
-        response = requests.get(url, headers=HEADERS)
+        response = session.get(url, headers=get_headers())
         if response.status_code == 200:
             break
         elif response.status_code in [403, 429]:
-            wait_time = 15 * (attempt + 1)
-            print(f"Rate limited (403) on {url}. Retrying in {wait_time} seconds...")
+            wait_time = random.uniform(10.0, 20.0) * (attempt + 1)
+            print(f"Rate limited ({response.status_code}) on {url}. Retrying in {wait_time:.1f} seconds...")
             time.sleep(wait_time)
         else:
             print(f"Failed to fetch {url}: {response.status_code}")
@@ -129,14 +142,14 @@ def get_article_content(url):
     import time
     max_retries = 5
     for attempt in range(max_retries):
-        response = requests.get(url, headers=HEADERS)
+        response = session.get(url, headers=get_headers())
         if response.status_code == 200:
             break
         elif response.status_code == 404:
             return ""  # Page not found, no point retrying
         elif response.status_code in [403, 429]:
-            wait_time = 15 * (attempt + 1)
-            print(f"  * Rate limited fetching content on {url}. Retrying in {wait_time} seconds...")
+            wait_time = random.uniform(10.0, 20.0) * (attempt + 1)
+            print(f"  * Rate limited fetching content on {url}. Retrying in {wait_time:.1f} seconds...")
             time.sleep(wait_time)
         else:
             return ""
@@ -206,9 +219,9 @@ def scrape_news_pages(start_page=1, end_page=1):
             save_article(article)
             all_new_articles.append(article)
             # Polite delay after fetching article
-            time.sleep(3)
+            time.sleep(random.uniform(2.0, 4.0))
             
         # Polite delay after each page
-        time.sleep(2)
+        time.sleep(random.uniform(1.5, 3.0))
             
     return all_new_articles, total_skipped
