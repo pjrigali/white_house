@@ -47,15 +47,15 @@ def init_storage():
             writer = csv.writer(f)
             writer.writerow(headers)
 
-def is_already_collected(title):
-    """Checks if an article with the given title has already been collected."""
+def is_already_collected(title, date):
+    """Checks if an article with the given title and date has already been collected."""
     if not os.path.exists(TRACKING_FILE):
         return False
     
     with open(TRACKING_FILE, 'r', newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            if row['article_name'] == title:
+            if row['article_name'] == title and row['date_created'] == date:
                 return True
     return False
 
@@ -68,9 +68,21 @@ def update_tracking_csv(title, date_created, category):
 
 def get_article_links(url):
     """Scrapes article titles, links, dates, and categories from a list page."""
-    response = requests.get(url, headers=HEADERS)
-    if response.status_code != 200:
-        print(f"Failed to fetch {url}: {response.status_code}")
+    import time
+    max_retries = 5
+    for attempt in range(max_retries):
+        response = requests.get(url, headers=HEADERS)
+        if response.status_code == 200:
+            break
+        elif response.status_code in [403, 429]:
+            wait_time = 15 * (attempt + 1)
+            print(f"Rate limited (403) on {url}. Retrying in {wait_time} seconds...")
+            time.sleep(wait_time)
+        else:
+            print(f"Failed to fetch {url}: {response.status_code}")
+            return []
+    else:
+        print(f"Failed to fetch {url} after {max_retries} attempts.")
         return []
     
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -114,8 +126,22 @@ def get_article_links(url):
 
 def get_article_content(url):
     """Scrapes the main text content of an individual article."""
-    response = requests.get(url, headers=HEADERS)
-    if response.status_code != 200:
+    import time
+    max_retries = 5
+    for attempt in range(max_retries):
+        response = requests.get(url, headers=HEADERS)
+        if response.status_code == 200:
+            break
+        elif response.status_code == 404:
+            return ""  # Page not found, no point retrying
+        elif response.status_code in [403, 429]:
+            wait_time = 15 * (attempt + 1)
+            print(f"  * Rate limited fetching content on {url}. Retrying in {wait_time} seconds...")
+            time.sleep(wait_time)
+        else:
+            return ""
+    else:
+        print(f"  * Failed to fetch content for {url} after retries.")
         return ""
     
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -148,6 +174,7 @@ def scrape_news_pages(start_page=1, end_page=1):
     init_storage()
     all_new_articles = []
     total_skipped = 0
+    import time
     
     for page_num in range(start_page, end_page + 1):
         if page_num == 1:
@@ -166,8 +193,9 @@ def scrape_news_pages(start_page=1, end_page=1):
         
         for article in articles:
             title = article['title']
-            if is_already_collected(title):
-                print(f"  - Skipping duplicate: {title}")
+            date = article['date']
+            if is_already_collected(title, date):
+                print(f"  - Skipping duplicate: {title} ({date})")
                 total_skipped += 1
                 continue
             
@@ -177,8 +205,10 @@ def scrape_news_pages(start_page=1, end_page=1):
             
             save_article(article)
             all_new_articles.append(article)
-            # Polite delay
-            import time
-            time.sleep(1)
+            # Polite delay after fetching article
+            time.sleep(3)
+            
+        # Polite delay after each page
+        time.sleep(2)
             
     return all_new_articles, total_skipped
