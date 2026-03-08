@@ -25,7 +25,7 @@ white_house/
 | `slugify(text)` | Converts article titles into file-friendly slugs for JSON filenames. |
 | `init_storage()` | Creates the output directory and initializes the tracking CSV with proper headers. |
 | `is_already_collected(title)` | Checks the tracking CSV to determine if an article has already been scraped. |
-| `update_tracking_csv(title, date_created, category)` | Appends a new entry to the tracking CSV with creation date, collection timestamp, title, and category. |
+| `update_tracking_csv(title, date_created, category, filename)` | Appends a new entry to the tracking CSV with creation date, collection timestamp, title, category, and filename. |
 | `get_article_links(url)` | Scrapes a White House news listing page for article titles, links, dates, and categories. |
 | `get_article_content(url)` | Fetches and extracts the full text content of an individual article page. |
 | `save_article(article_data)` | Saves an article as a JSON file and updates the tracking CSV. |
@@ -80,6 +80,6 @@ Each article is saved as a JSON file with the following structure:
 
 An `article_tracking.csv` file tracks all collected articles:
 
-| date_created | date_collected | article_name | category |
-|---|---|---|---|
-| February 14, 2026 | 2026-02-14 23:45:00 | Article Title | Articles |
+| date_created | date_collected | article_name | category | filename |
+|---|---|---|---|---|
+| February 14, 2026 | 2026-02-14 23:45:00 | Article Title | Articles | 20260214_article-title.json |

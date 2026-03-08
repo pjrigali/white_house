@@ -30,13 +30,29 @@ def slugify(text):
     text = re.sub(r'[^a-z0-9]+', '-', text)
     return text.strip('-')
 
+def format_date_for_filename(date_str):
+    """Converts a date string like 'January 27, 2026' to '20260127'."""
+    try:
+        # Expected format: "January 27, 2026"
+        dt = datetime.strptime(date_str, "%B %d, %Y")
+        return dt.strftime("%Y%m%d")
+    except Exception:
+        # Try a few other common formats if needed
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d %B %Y"]:
+            try:
+                dt = datetime.strptime(date_str, fmt)
+                return dt.strftime("%Y%m%d")
+            except:
+                continue
+        return "00000000"
+
 def init_storage():
     """Initializes the output folder and tracking CSV if they don't exist."""
     if not os.path.exists(OUTPUT_FOLDER):
         os.makedirs(OUTPUT_FOLDER)
     
     # Check if tracking file exists and has the correct header
-    headers = ['date_created', 'date_collected', 'article_name', 'category']
+    headers = ['date_created', 'date_collected', 'article_name', 'category', 'filename']
     file_exists = os.path.exists(TRACKING_FILE)
     
     if file_exists:
@@ -52,7 +68,10 @@ def init_storage():
                     writer.writerow(headers)
                     for row in rows:
                         if len(row) == 3:
-                            row.append("Unknown") # Fill in category for old rows
+                            row.append("Unknown") # Category
+                        if len(row) == 4:
+                            # Try to reconstruct filename if missing (for migration)
+                            row.append("None") 
                         writer.writerow(row)
     else:
         with open(TRACKING_FILE, 'w', newline='', encoding='utf-8') as f:
@@ -70,12 +89,12 @@ def is_already_collected(title, date):
     """Checks if an article with the given title and date has already been collected."""
     return (title, date) in COLLECTED_ARTICLES_CACHE
 
-def update_tracking_csv(title, date_created, category):
+def update_tracking_csv(title, date_created, category, filename):
     """Adds a new entry to the tracking CSV."""
     date_collected = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(TRACKING_FILE, 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow([date_created, date_collected, title, category])
+        writer.writerow([date_created, date_collected, title, category, filename])
     # Also update cache
     COLLECTED_ARTICLES_CACHE.add((title, date_created))
 
@@ -168,7 +187,9 @@ def get_article_content(url):
 
 def save_article(article_data):
     """Saves article data to a JSON file and updates tracking CSV."""
-    filename = f"{slugify(article_data['title'][:50])}.json"
+    date_prefix = format_date_for_filename(article_data['date'])
+    name_slug = slugify(article_data['title'][:100])
+    filename = f"{date_prefix}_{name_slug}.json"
     filepath = os.path.join(OUTPUT_FOLDER, filename)
     
     # Add scrape timestamp
@@ -178,7 +199,7 @@ def save_article(article_data):
         json.dump(article_data, f, indent=4, ensure_ascii=False)
     
     # Update tracking CSV
-    update_tracking_csv(article_data['title'], article_data['date'], article_data['category'])
+    update_tracking_csv(article_data['title'], article_data['date'], article_data['category'], filename)
     
     return filepath
 
