@@ -382,7 +382,7 @@ def run_temporal_analysis(analysis_csv_path, stylometry_csv_path, output_dir):
 
 if __name__ == "__main__":
     base = os.getcwd()
-    silver_dir = os.path.join(base, ".data_lake", "02_Silver", "white_house")
+    silver_dir = os.path.join(base, "data-lake", "02_Silver", "white_house")
 
     analysis_csv = os.path.join(silver_dir, "article_analysis_results.csv")
     stylometry_csv = os.path.join(silver_dir, "stylometry_features.csv")

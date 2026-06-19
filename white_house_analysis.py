@@ -181,7 +181,7 @@ def analyze_articles(bronze_dir, silver_path):
     print(f"Processed {len(results)} articles.")
 
 if __name__ == "__main__":
-    bronze_dir = os.path.join(os.getcwd(), ".data_lake", "01_Bronze", "white_house")
-    silver_path = os.path.join(os.getcwd(), ".data_lake", "02_Silver", "white_house", "article_analysis_results.csv")
+    bronze_dir = os.path.join(os.getcwd(), "data-lake", "01_Bronze", "white_house")
+    silver_path = os.path.join(os.getcwd(), "data-lake", "02_Silver", "white_house", "article_analysis_results.csv")
     
     analyze_articles(bronze_dir, silver_path)

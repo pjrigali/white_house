@@ -448,7 +448,7 @@ def analyze_stylometry(bronze_dir, silver_path):
 
 
 if __name__ == "__main__":
-    bronze_dir = os.path.join(os.getcwd(), ".data_lake", "01_Bronze", "white_house")
-    silver_path = os.path.join(os.getcwd(), ".data_lake", "02_Silver", "white_house", "stylometry_features.csv")
+    bronze_dir = os.path.join(os.getcwd(), "data-lake", "01_Bronze", "white_house")
+    silver_path = os.path.join(os.getcwd(), "data-lake", "02_Silver", "white_house", "stylometry_features.csv")
 
     analyze_stylometry(bronze_dir, silver_path)

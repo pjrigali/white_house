@@ -20,7 +20,7 @@ def get_headers():
 
 session = requests.Session()
 
-OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.data_lake', '01_bronze', 'white_house')
+OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data-lake', '01_bronze', 'white_house')
 TRACKING_FILE = os.path.join(OUTPUT_FOLDER, "article_tracking.csv")
 COLLECTED_ARTICLES_CACHE = set()
 
